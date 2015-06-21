@@ -1,10 +1,7 @@
-#
-# TODO:
-#   - search more pages
-#
 """Adds bandcamp album search support to the autotagger. Requires the
 BeautifulSoup library.
 """
+
 from __future__ import (division, absolute_import, print_function,
                         unicode_literals)
 
@@ -18,7 +15,7 @@ import isodate
 
 
 USER_AGENT = u'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
-BANDCAMP_SEARCH = u'http://bandcamp.com/search?q='
+BANDCAMP_SEARCH = u'http://bandcamp.com/search?q={query}&page={page}'
 BANDCAMP_ALBUM = u'album'
 BANDCAMP_ARTIST = u'band'
 BANDCAMP_TRACK = u'track'
@@ -28,7 +25,10 @@ class BandcampPlugin(BeetsPlugin):
 
     def __init__(self):
         super(BandcampPlugin, self).__init__()
-        self.config.add({'source_weight': 0.5})
+        self.config.add({
+            'source_weight': 0.5,
+            'min_candidates': 5,
+        })
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
@@ -139,7 +139,7 @@ class BandcampPlugin(BeetsPlugin):
                             "{1}".format(url, e))
 
 
-    def _search(self, query, search_type=BANDCAMP_ALBUM):
+    def _search(self, query, search_type=BANDCAMP_ALBUM, page=1):
         """Returns a list of bandcamp urls for items of type search_type
         matching the query.
         """
@@ -148,18 +148,27 @@ class BandcampPlugin(BeetsPlugin):
             return None
 
         try:
-            results = self._get(BANDCAMP_SEARCH + query)
-            clazz = u'searchresult {0}'.format(search_type)
             urls = []
-            for result in results.find_all('li', attrs={'class': clazz}):
-                a = result.find(attrs={'class': 'heading'}).a
-                if a is not None:
-                    urls.append(a['href'].split('?')[0])
+            # Search bandcamp until min_candidates results have been found or
+            # we hit the last page in the results.
+            while len(urls) < self.config['min_candidates'].as_number():
+                self._log.debug('Searching {}  page {}'.format(search_type, page))
+                results = self._get(BANDCAMP_SEARCH.format(query=query, page=page))
+                clazz = u'searchresult {0}'.format(search_type)
+                for result in results.find_all('li', attrs={'class': clazz}):
+                    a = result.find(attrs={'class': 'heading'}).a
+                    if a is not None:
+                        urls.append(a['href'].split('?')[0])
+
+                # Stop searching if we are on the last page.
+                if not results.find('a', attrs={'class': 'next'}):
+                    break
+                page += 1
 
             return urls
         except requests.exceptions.RequestException as e:
-            self._log.debug("Communication error while searching for {0!r}: "
-                            "{1}".format(query, e))
+            self._log.debug("Communication error while searching page {0} for {1!r}: "
+                            "{2}".format(page, query, e))
             return []
 
     def _get(self, url):
