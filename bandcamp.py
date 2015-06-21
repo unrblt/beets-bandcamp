@@ -1,7 +1,6 @@
 #
 # TODO:
-#   - item_candidates
-#   - track_for_id
+#   - search more pages
 #
 """Adds bandcamp album search support to the autotagger. Requires the
 BeautifulSoup library.
@@ -54,8 +53,27 @@ class BandcampPlugin(BeetsPlugin):
         url = album_id
         return self.get_album_info(url)
 
+    def item_candidates(self, item, artist, album):
+        """Returns a list of TrackInfo objects from a bandcamp search matching
+        a singleton.
+        """
+        if item.title:
+            return self.get_tracks(item.title)
+        if item.album:
+            return self.get_tracks(item.album)
+        if item.artist:
+            return self.get_tracks(item.artist)
+        return []
+
+    def track_for_id(self, track_id):
+        """Fetches a track by its bandcamp ID and returns a TrackInfo object
+        or None if the track is not found.
+        """
+        url = track_id
+        return self.get_track_info(url)
+
     def get_albums(self, query):
-        """Returns a list of AlbumInfo objects for a discogs search query.
+        """Returns a list of AlbumInfo objects for a bandcamp search query.
         """
         album_urls = self._search(query, BANDCAMP_ALBUM)
         return [self.get_album_info(url) for url in album_urls]
@@ -87,6 +105,37 @@ class BandcampPlugin(BeetsPlugin):
                              data_source='bandcamp', data_url=url)
         except requests.exceptions.RequestException as e:
             self._log.debug("Communication error while fetching album {0!r}: "
+                            "{1}".format(url, e))
+
+    def get_tracks(self, query):
+        """Returns a list of TrackInfo objects for a bandcamp search query.
+        """
+        track_urls = self._search(query, BANDCAMP_TRACK)
+        return [self.get_track_info(url) for url in track_urls]
+
+    def get_track_info(self, url):
+        """Returns a TrackInfo object for a bandcamp track page.
+        """
+        try:
+            html = self._get(url)
+            name_section = html.find(id='name-section')
+            title = name_section.find(attrs={'itemprop': 'name'}).text.strip()
+            artist_url = url.split('/track/')[0]
+            artist = name_section.find(attrs={'itemprop': 'byArtist'}).text.strip()
+
+            try:
+                duration = html.find('meta', attrs={'itemprop': 'duration'})['content']
+                track_length = float(duration)
+                if track_length == 0:
+                    track_length = None
+            except TypeError:
+                track_length = None
+
+            return TrackInfo(title, url, length=track_length, artist=artist,
+                             artist_id=artist_url, data_source='bandcamp',
+                             media='Digital Media', data_url=url)
+        except requests.exceptions.RequestException as e:
+            self._log.debug("Communication error while fetching track {0!r}: "
                             "{1}".format(url, e))
 
 
