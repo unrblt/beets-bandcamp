@@ -1,7 +1,7 @@
 #
 # TODO:
 #   - error handling / logging
-#   - album_for_id
+#   - item_candidates
 #   - track_for_id
 #
 """Adds bandcamp album search support to the autotagger. Requires the
@@ -46,6 +46,15 @@ class BandcampPlugin(BeetsPlugin):
         matching an album and artist (if not various).
         """
         return self.get_albums(album)
+
+    def album_for_id(self, album_id):
+        """Fetches an album by its bandcamp ID and returns an AlbumInfo object
+        or None if the album is not found.
+        """
+        # We use album url as id, so we just need to fetch and parse the
+        # album page.
+        url = album_id
+        return self.get_album_info(url)
 
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a discogs search query.
