@@ -1,10 +1,8 @@
 #
 # TODO:
-#   - config (source weight)
-#   - implement distance
 #   - error handling / logging
-#   - album_from_id
-#   - track_from_id
+#   - album_for_id
+#   - track_for_id
 #
 """Adds bandcamp album search support to the autotagger. Requires the
 BeautifulSoup library.
@@ -16,7 +14,6 @@ import beets.ui
 from beets import logging
 from beets.autotag.hooks import AlbumInfo, TrackInfo, Distance
 from beets.plugins import BeetsPlugin
-from beets.util import confit
 import beets
 import requests
 from bs4 import BeautifulSoup
@@ -34,10 +31,15 @@ class BandcampPlugin(BeetsPlugin):
 
     def __init__(self):
         super(BandcampPlugin, self).__init__()
-        self.register_listener('import_begin', self.setup)
+        self.config.add({'source_weight': 0.5})
 
-    def setup(self, session=None):
-        pass
+    def album_distance(self, items, album_info, mapping):
+        """Returns the album distance.
+        """
+        dist = Distance()
+        if album_info.data_source == 'bandcamp':
+            dist.add('source', self.config['source_weight'].as_number())
+        return dist
 
     def candidates(self, items, artist, album, va_likely):
         """Returns a list of AlbumInfo objects for bandcamp search results
