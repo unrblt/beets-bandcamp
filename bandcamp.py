@@ -1,6 +1,5 @@
 #
 # TODO:
-#   - error handling / logging
 #   - item_candidates
 #   - track_for_id
 #
@@ -11,7 +10,6 @@ from __future__ import (division, absolute_import, print_function,
                         unicode_literals)
 
 import beets.ui
-from beets import logging
 from beets.autotag.hooks import AlbumInfo, TrackInfo, Distance
 from beets.plugins import BeetsPlugin
 import beets
@@ -65,52 +63,65 @@ class BandcampPlugin(BeetsPlugin):
     def get_album_info(self, url):
         """Returns an AlbumInfo object for a bandcamp album page.
         """
-        html = self._get(url)
-        name_section = html.find(id='name-section')
-        album = name_section.find(attrs={'itemprop': 'name'}).text.strip()
-        # Even though there is an item_id in some urls in bandcamp, it's not
-        # visible on the page and you can't search by the id, so we need to use
-        # the url as id.
-        album_id = url
-        artist = name_section.find(attrs={'itemprop': 'byArtist'}) .text.strip()
-        release = html.find('meta', attrs={'itemprop': 'datePublished'})['content']
-        release = isodate.parse_date(release)
-        artist_url = url.split('/album/')[0]
-        tracks = []
-        for row in html.find(id='track_table').find_all(attrs={'itemprop': 'tracks'}):
-            track = self._parse_track(row)
-            track.track_id = '{0}{1}'.format(artist_url, track.track_id)
-            tracks.append(track)
+        try:
+            html = self._get(url)
+            name_section = html.find(id='name-section')
+            album = name_section.find(attrs={'itemprop': 'name'}).text.strip()
+            # Even though there is an item_id in some urls in bandcamp, it's not
+            # visible on the page and you can't search by the id, so we need to use
+            # the url as id.
+            album_id = url
+            artist = name_section.find(attrs={'itemprop': 'byArtist'}) .text.strip()
+            release = html.find('meta', attrs={'itemprop': 'datePublished'})['content']
+            release = isodate.parse_date(release)
+            artist_url = url.split('/album/')[0]
+            tracks = []
+            for row in html.find(id='track_table').find_all(attrs={'itemprop': 'tracks'}):
+                track = self._parse_album_track(row)
+                track.track_id = '{0}{1}'.format(artist_url, track.track_id)
+                tracks.append(track)
 
-        return AlbumInfo(album, album_id, artist, artist_url, tracks,
-                         year=release.year, month=release.month,
-                         day=release.day, country='XW', media='Digital Media',
-                         data_source='bandcamp', data_url=url)
+            return AlbumInfo(album, album_id, artist, artist_url, tracks,
+                             year=release.year, month=release.month,
+                             day=release.day, country='XW', media='Digital Media',
+                             data_source='bandcamp', data_url=url)
+        except requests.exceptions.RequestException as e:
+            self._log.debug("Communication error while fetching album {0!r}: "
+                            "{1}".format(url, e))
 
-    def _search(self, query, type=BANDCAMP_ALBUM):
-        """Returns a list of bandcamp urls form type items matching query.
+
+    def _search(self, query, search_type=BANDCAMP_ALBUM):
+        """Returns a list of bandcamp urls for items of type search_type
+        matching the query.
         """
-        if type not in [BANDCAMP_ARTIST, BANDCAMP_ALBUM, BANDCAMP_TRACK]:
-            raise ValueError('Invalid type for search: %s' % type)
+        if search_type not in [BANDCAMP_ARTIST, BANDCAMP_ALBUM, BANDCAMP_TRACK]:
+            self._log.debug('Invalid type for search: {0}'.format(search_type))
+            return None
 
-        results = self._get(BANDCAMP_SEARCH + query)
-        clazz = u'searchresult %s' % type
-        urls = []
-        for result in results.find_all('li', attrs={'class': clazz}):
-            a = result.find(attrs={'class': 'heading'}).a
-            if a is not None:
-                urls.append(a['href'].split('?')[0])
+        try:
+            results = self._get(BANDCAMP_SEARCH + query)
+            clazz = u'searchresult {0}'.format(search_type)
+            urls = []
+            for result in results.find_all('li', attrs={'class': clazz}):
+                a = result.find(attrs={'class': 'heading'}).a
+                if a is not None:
+                    urls.append(a['href'].split('?')[0])
 
-        return urls
+            return urls
+        except requests.exceptions.RequestException as e:
+            self._log.debug("Communication error while searching for {0!r}: "
+                            "{1}".format(query, e))
+            return []
 
     def _get(self, url):
         """Returns a BeautifulSoup object with the contents of url.
         """
         headers = {'User-Agent': USER_AGENT}
         r = requests.get(url, headers=headers)
+        r.raise_for_status()
         return BeautifulSoup(r.text)
 
-    def _parse_track(self, track_html):
+    def _parse_album_track(self, track_html):
         """Returns a TrackInfo derived from the html describing a track in a
         bandcamp album page.
         """
