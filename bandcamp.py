@@ -1,6 +1,3 @@
-#
-# TODO: Fetch albumart
-#
 """Adds bandcamp album search support to the autotagger. Requires the
 BeautifulSoup library.
 """
@@ -10,7 +7,8 @@ from __future__ import (division, absolute_import, print_function,
 
 import beets.ui
 from beets.autotag.hooks import AlbumInfo, TrackInfo, Distance
-from beets.plugins import BeetsPlugin
+from beets import plugins
+from beetsplug import fetchart
 import beets
 import requests
 from bs4 import BeautifulSoup
@@ -24,16 +22,28 @@ BANDCAMP_ARTIST = u'band'
 BANDCAMP_TRACK = u'track'
 
 
-class BandcampPlugin(BeetsPlugin):
+class BandcampPlugin(plugins.BeetsPlugin):
 
     def __init__(self):
         super(BandcampPlugin, self).__init__()
         self.config.add({
             'source_weight': 0.5,
             'min_candidates': 5,
-            'lyrics': False
+            'lyrics': False,
+            'art': False
         })
         self.import_stages = [self.imported]
+        self.register_listener('pluginload', self.loaded)
+
+    def loaded(self):
+        # Add our own artsource to the fetchart plugin.
+        # FIXME: This is ugly, but i didn't find another way to extend fetchart
+        # without declaring a new plugin.
+        if self.config['art']:
+            for plugin in plugins.find_plugins():
+                if isinstance(plugin, fetchart.FetchArtPlugin):
+                    plugin.sources = [BandcampAlbumArt(plugin._log)] + plugin.sources
+                    break
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
@@ -242,4 +252,24 @@ class BandcampPlugin(BeetsPlugin):
             track_length = None
 
         return TrackInfo(title, track_id, index=track_num, length=track_length)
+
+class BandcampAlbumArt(fetchart.ArtSource):
+    """Fetchart ArtSource for bandcamp albums."""
+
+    def get(self, album):
+        """Return the url for the cover from the bandcamp album page.
+        This only returns cover art urls for bandcamp albums (by id).
+        """
+        if u'bandcamp' in album.mb_albumid:
+            try:
+                headers = {'User-Agent': USER_AGENT}
+                r = requests.get(album.mb_albumid, headers=headers)
+                r.raise_for_status()
+                album_html = BeautifulSoup(r.text).find(id='tralbumArt')
+                yield album_html.find('a', attrs={'class': 'popupImage'})['href']
+            except requests.exceptions.RequestException as e:
+                self._log.debug("Communication error getting art for {0}: {1}"
+                                .format(album, e))
+            except ValueError:
+                pass
 
