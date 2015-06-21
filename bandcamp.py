@@ -1,3 +1,6 @@
+#
+# TODO: Fetch albumart
+#
 """Adds bandcamp album search support to the autotagger. Requires the
 BeautifulSoup library.
 """
@@ -28,7 +31,9 @@ class BandcampPlugin(BeetsPlugin):
         self.config.add({
             'source_weight': 0.5,
             'min_candidates': 5,
+            'lyrics': False
         })
+        self.import_stages = [self.imported]
 
     def album_distance(self, items, album_info, mapping):
         """Returns the album distance.
@@ -71,6 +76,15 @@ class BandcampPlugin(BeetsPlugin):
         """
         url = track_id
         return self.get_track_info(url)
+
+    def imported(self, session, task):
+        """Import hook for fetching lyrics from bandcamp automatically.
+        """
+        if self.config['lyrics']:
+            for item in task.imported_items():
+                # Only fetch lyrics for items from bandcamp
+                if item.data_source == u'bandcamp':
+                    self.add_lyrics(item, True)
 
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a bandcamp search query.
@@ -138,6 +152,37 @@ class BandcampPlugin(BeetsPlugin):
             self._log.debug("Communication error while fetching track {0!r}: "
                             "{1}".format(url, e))
 
+    def add_lyrics(self, item, write = False):
+        """Fetch and store lyrics for a single item. If ``write``, then the
+        lyrics will also be written to the file itself."""
+        # Skip if the item already has lyrics.
+        if item.lyrics:
+            self._log.info(u'lyrics already present: {0}', item)
+            return
+
+        lyrics = self.get_item_lyrics(item)
+
+        if lyrics:
+            self._log.info(u'fetched lyrics: {0}', item)
+        else:
+            self._log.info(u'lyrics not found: {0}', item)
+            return
+
+        item.lyrics = lyrics
+
+        if write:
+            item.try_write()
+        item.store()
+
+    def get_item_lyrics(self, item):
+        """Get the lyrics for item from bandcamp .
+        """
+        # The track id is the bandcamp url when item.data_source is bandcamp.
+        html = self._get(item.mb_trackid)
+        lyrics = html.find(attrs={'class': 'lyricsText'});
+        if lyrics:
+            return lyrics.text
+        return lyrics
 
     def _search(self, query, search_type=BANDCAMP_ALBUM, page=1):
         """Returns a list of bandcamp urls for items of type search_type
@@ -152,7 +197,7 @@ class BandcampPlugin(BeetsPlugin):
             # Search bandcamp until min_candidates results have been found or
             # we hit the last page in the results.
             while len(urls) < self.config['min_candidates'].as_number():
-                self._log.debug('Searching {}  page {}'.format(search_type, page))
+                self._log.debug('Searching {}, page {}'.format(search_type, page))
                 results = self._get(BANDCAMP_SEARCH.format(query=query, page=page))
                 clazz = u'searchresult {0}'.format(search_type)
                 for result in results.find_all('li', attrs={'class': clazz}):
