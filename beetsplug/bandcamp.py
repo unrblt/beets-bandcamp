@@ -112,8 +112,12 @@ class BandcampPlugin(plugins.BeetsPlugin):
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a bandcamp search query.
         """
-        album_urls = self._search(query, BANDCAMP_ALBUM)
-        return [self.get_album_info(url) for url in album_urls]
+        albums = []
+        for url in self._search(query, BANDCAMP_ALBUM):
+            album = self.get_album_info(url)
+            if album is not None:
+                albums.append(album)
+        return albums
 
     def get_album_info(self, url):
         """Returns an AlbumInfo object for a bandcamp album page.
@@ -143,6 +147,10 @@ class BandcampPlugin(plugins.BeetsPlugin):
         except requests.exceptions.RequestException as e:
             self._log.debug("Communication error while fetching album {0!r}: "
                             "{1}".format(url, e))
+        except TypeError as e:
+            self._log.debug("Unexpected html while scraping album {0!r}: {1}".format(url, e))
+        except BandcampException as e:
+            self._log.debug('Error: {0}'.format(e))
 
     def get_tracks(self, query):
         """Returns a list of TrackInfo objects for a bandcamp search query.
@@ -245,7 +253,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         headers = {'User-Agent': USER_AGENT}
         r = requests.get(url, headers=headers)
         r.raise_for_status()
-        return BeautifulSoup(r.text)
+        return BeautifulSoup(r.text, 'html.parser')
 
     def _parse_album_track(self, track_html):
         """Returns a TrackInfo derived from the html describing a track in a
@@ -256,7 +264,10 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
         title_html = track_html.find(attrs={'class': 'title-col'})
         title = title_html.find(attrs={'itemprop': 'name'}).text.strip()
-        track_id = title_html.find(attrs={'itemprop': 'url'})['href']
+        track_url = title_html.find(attrs={'itemprop': 'url'})
+        if track_url is None:
+            raise BandcampException('No track url (id) for track {0} - {1}'.format(track_num, title))
+        track_id = track_url['href']
         try:
             duration = title_html.find('meta', attrs={'itemprop': 'duration'})['content']
             duration = duration.replace('P', 'PT')
@@ -278,7 +289,7 @@ class BandcampAlbumArt(fetchart.ArtSource):
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
                 r.raise_for_status()
-                album_html = BeautifulSoup(r.text).find(id='tralbumArt')
+                album_html = BeautifulSoup(r.text, 'html.parser').find(id='tralbumArt')
                 yield album_html.find('a', attrs={'class': 'popupImage'})['href']
             except requests.exceptions.RequestException as e:
                 self._log.debug("Communication error getting art for {0}: {1}"
@@ -286,3 +297,5 @@ class BandcampAlbumArt(fetchart.ArtSource):
             except ValueError:
                 pass
 
+class BandcampException(Exception):
+    pass
