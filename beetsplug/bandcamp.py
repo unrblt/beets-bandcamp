@@ -56,6 +56,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
             for plugin in plugins.find_plugins():
                 if isinstance(plugin, fetchart.FetchArtPlugin):
                     plugin.sources = [BandcampAlbumArt(plugin._log)] + plugin.sources
+                    fetchart.ART_SOURCES[u'bandcamp'] = BandcampAlbumArt
                     break
 
     def album_distance(self, items, album_info, mapping):
