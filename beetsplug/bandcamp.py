@@ -63,7 +63,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         """Returns the album distance.
         """
         dist = Distance()
-        if album_info.data_source == 'bandcamp':
+        if hasattr(album_info, 'data_source') and album_info.data_source == 'bandcamp':
             dist.add('source', self.config['source_weight'].as_number())
         return dist
 
@@ -285,7 +285,7 @@ class BandcampAlbumArt(fetchart.ArtSource):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, str) and u'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
