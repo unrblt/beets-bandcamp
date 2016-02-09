@@ -107,7 +107,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         if self.config['lyrics']:
             for item in task.imported_items():
                 # Only fetch lyrics for items from bandcamp
-                if item.data_source == u'bandcamp':
+                if hasattr(item, 'data_source') and item.data_source == u'bandcamp':
                     self.add_lyrics(item, True)
 
     def get_albums(self, query):
