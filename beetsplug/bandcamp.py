@@ -55,7 +55,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         if self.config['art']:
             for plugin in plugins.find_plugins():
                 if isinstance(plugin, fetchart.FetchArtPlugin):
-                    plugin.sources = [BandcampAlbumArt(plugin._log)] + plugin.sources
+                    plugin.sources = [BandcampAlbumArt(plugin._log, self.config)] + plugin.sources
                     fetchart.ART_SOURCES[u'bandcamp'] = BandcampAlbumArt
                     break
 
