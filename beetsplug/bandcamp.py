@@ -207,14 +207,18 @@ class BandcampPlugin(plugins.BeetsPlugin):
         item.store()
 
     def get_item_lyrics(self, item):
-        """Get the lyrics for item from bandcamp .
+        """Get the lyrics for item from bandcamp.
         """
-        # The track id is the bandcamp url when item.data_source is bandcamp.
-        html = self._get(item.mb_trackid)
-        lyrics = html.find(attrs={'class': 'lyricsText'});
-        if lyrics:
-            return lyrics.text
-        return lyrics
+        try:
+            # The track id is the bandcamp url when item.data_source is bandcamp.
+            html = self._get(item.mb_trackid)
+            lyrics = html.find(attrs={'class': 'lyricsText'});
+            if lyrics:
+                return lyrics.text
+        except requests.exceptions.RequestException as e:
+            self._log.debug("Communication error while fetching lyrics for track {0!r}: "
+                            "{1}".format(item.mb_trackid, e))
+        return None
 
     def _search(self, query, search_type=BANDCAMP_ALBUM, page=1):
         """Returns a list of bandcamp urls for items of type search_type
