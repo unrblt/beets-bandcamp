@@ -148,7 +148,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         except requests.exceptions.RequestException as e:
             self._log.debug("Communication error while fetching album {0!r}: "
                             "{1}".format(url, e))
-        except TypeError as e:
+        except (TypeError, AttributeError) as e:
             self._log.debug("Unexpected html while scraping album {0!r}: {1}".format(url, e))
         except BandcampException as e:
             self._log.debug('Error: {0}'.format(e))
