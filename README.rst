@@ -1,3 +1,6 @@
+.. image:: http://img.shields.io/pypi/v/beets-bandcamp.svg
+    :target: https://pypi.python.org/pypi/beets-bandcamp
+
 Plugin for `beets <https://github.com/beetbox/beets>`_ to use bandcamp as an
 autotagger source.
 
