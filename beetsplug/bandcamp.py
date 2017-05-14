@@ -288,7 +288,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
 class BandcampAlbumArt(fetchart.RemoteArtSource):
     """Fetchart ArtSource for bandcamp albums."""
 
-    def get(self, album, extra):
+    def get(self, album, plugin, paths):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """

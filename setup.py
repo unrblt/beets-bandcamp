@@ -15,7 +15,7 @@ setup(
     packages=['beetsplug'],
 
     install_requires=[
-        'beets>=1.3.7,<1.4.4',
+        'beets>=1.4.4',
         'requests',
         'beautifulsoup4',
         'isodate'
