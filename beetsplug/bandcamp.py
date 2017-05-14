@@ -57,6 +57,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
                 if isinstance(plugin, fetchart.FetchArtPlugin):
                     plugin.sources = [BandcampAlbumArt(plugin._log, self.config)] + plugin.sources
                     fetchart.ART_SOURCES[u'bandcamp'] = BandcampAlbumArt
+                    fetchart.SOURCE_NAMES[BandcampAlbumArt] = u'bandcamp'
                     break
 
     def album_distance(self, items, album_info, mapping):
@@ -282,10 +283,10 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
         return TrackInfo(title, track_id, index=track_num, length=track_length)
 
-class BandcampAlbumArt(fetchart.ArtSource):
+class BandcampAlbumArt(fetchart.RemoteArtSource):
     """Fetchart ArtSource for bandcamp albums."""
 
-    def get(self, album):
+    def get(self, album, extra):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
