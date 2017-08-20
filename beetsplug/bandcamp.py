@@ -286,19 +286,20 @@ class BandcampPlugin(plugins.BeetsPlugin):
         return TrackInfo(title, track_id, index=track_num, length=track_length)
 
 class BandcampAlbumArt(fetchart.RemoteArtSource):
-    """Fetchart ArtSource for bandcamp albums."""
+    NAME = u"Bandcamp"
 
     def get(self, album, plugin, paths):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if isinstance(album.mb_albumid, str) and u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, basestring) and u'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
                 r.raise_for_status()
                 album_html = BeautifulSoup(r.text, 'html.parser').find(id='tralbumArt')
-                yield album_html.find('a', attrs={'class': 'popupImage'})['href']
+                url = album_html.find('a', attrs={'class': 'popupImage'})['href']
+                yield self._candidate(url=url, match=fetchart.Candidate.MATCH_EXACT)
             except requests.exceptions.RequestException as e:
                 self._log.debug("Communication error getting art for {0}: {1}"
                                 .format(album, e))
