@@ -215,7 +215,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         try:
             # The track id is the bandcamp url when item.data_source is bandcamp.
             html = self._get(item.mb_trackid)
-            lyrics = html.find(attrs={'class': 'lyricsText'});
+            lyrics = html.find(attrs={'class': 'lyricsText'})
             if lyrics:
                 return lyrics.text
         except requests.exceptions.RequestException as e:
@@ -285,6 +285,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
         return TrackInfo(title, track_id, index=track_num, length=track_length)
 
+
 class BandcampAlbumArt(fetchart.RemoteArtSource):
     """Fetchart ArtSource for bandcamp albums."""
 
@@ -298,12 +299,15 @@ class BandcampAlbumArt(fetchart.RemoteArtSource):
                 r = requests.get(album.mb_albumid, headers=headers)
                 r.raise_for_status()
                 album_html = BeautifulSoup(r.text, 'html.parser').find(id='tralbumArt')
-                yield album_html.find('a', attrs={'class': 'popupImage'})['href']
+                image_url = album_html.find('a', attrs={'class': 'popupImage'})['href']
+                yield self._candidate(url=image_url,
+                                      match=fetchart.Candidate.MATCH_EXACT)
             except requests.exceptions.RequestException as e:
                 self._log.debug("Communication error getting art for {0}: {1}"
                                 .format(album, e))
             except ValueError:
                 pass
+
 
 class BandcampException(Exception):
     pass
