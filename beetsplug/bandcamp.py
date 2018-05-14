@@ -35,6 +35,7 @@ BANDCAMP_SEARCH = u'http://bandcamp.com/search?q={query}&page={page}'
 BANDCAMP_ALBUM = u'album'
 BANDCAMP_ARTIST = u'band'
 BANDCAMP_TRACK = u'track'
+ARTIST_TITLE_DELIMITER = u' - '
 
 
 class BandcampPlugin(plugins.BeetsPlugin):
@@ -45,7 +46,8 @@ class BandcampPlugin(plugins.BeetsPlugin):
             'source_weight': 0.5,
             'min_candidates': 5,
             'lyrics': False,
-            'art': False
+            'art': False,
+            'split_artist_title': False
         })
         self.import_stages = [self.imported]
         self.register_listener('pluginload', self.loaded)
@@ -171,6 +173,10 @@ class BandcampPlugin(plugins.BeetsPlugin):
             title = name_section.find(attrs={'itemprop': 'name'}).text.strip()
             artist_url = url.split('/track/')[0]
             artist = name_section.find(attrs={'itemprop': 'byArtist'}).text.strip()
+            if self.config['split_artist_title']:
+                artist_from_title, title = self._split_artist_title(title)
+                if artist_from_title is not None:
+                    artist = artist_from_title
 
             try:
                 duration = html.find('meta', attrs={'itemprop': 'duration'})['content']
@@ -272,6 +278,9 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
         title_html = track_html.find(attrs={'class': 'title-col'})
         title = title_html.find(attrs={'itemprop': 'name'}).text.strip()
+        artist = None
+        if self.config['split_artist_title']:
+            artist, title = self._split_artist_title(title)
         track_url = title_html.find(attrs={'itemprop': 'url'})
         if track_url is None:
             raise BandcampException('No track url (id) for track {0} - {1}'.format(track_num, title))
@@ -283,7 +292,15 @@ class BandcampPlugin(plugins.BeetsPlugin):
         except TypeError:
             track_length = None
 
-        return TrackInfo(title, track_id, index=track_num, length=track_length)
+        return TrackInfo(title, track_id, index=track_num, length=track_length, artist=artist)
+
+    def _split_artist_title(self, title):
+        """Returns artist and title by splitting title on ARTIST_TITLE_DELIMITER.
+        """
+        parts = title.split(ARTIST_TITLE_DELIMITER)
+        if len(parts) == 1:
+            return None, title
+        return parts[0], ARTIST_TITLE_DELIMITER.join(parts[1:])
 
 
 class BandcampAlbumArt(fetchart.RemoteArtSource):
