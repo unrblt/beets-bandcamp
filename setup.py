@@ -2,20 +2,20 @@ from setuptools import setup
 
 setup(
     name='beets-bandcamp',
-    version='0.1.1',
+    version='0.1.2',
     description='Plugin for beets (http://beets.io) to use bandcamp as an autotagger source.',
     long_description=open('README.rst').read(),
     author='Ariel George',
     author_email='unarbolito@gmail.com',
     url='https://github.com/unrblt/beets-bandcamp',
-    download_url='https://github.com/unrblt/beets-bandcamp/archive/v0.1.0.tar.gz',
+    download_url='https://github.com/unrblt/beets-bandcamp/archive/v0.1.2.tar.gz',
     license='GPL-2.0',
     platforms='ALL',
 
     packages=['beetsplug'],
 
     install_requires=[
-        'beets>=1.4.4',
+        'beets>=1.4.6',
         'requests',
         'beautifulsoup4',
         'isodate'

@@ -287,13 +287,13 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
 
 class BandcampAlbumArt(fetchart.RemoteArtSource):
-    """Fetchart ArtSource for bandcamp albums."""
+    NAME = u"Bandcamp"
 
     def get(self, album, plugin, paths):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if isinstance(album.mb_albumid, str) and u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, basestring) and u'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
