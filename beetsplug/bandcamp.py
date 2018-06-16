@@ -28,13 +28,15 @@ import beets
 import requests
 from bs4 import BeautifulSoup
 import isodate
+import six
 
 
-USER_AGENT = u'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
-BANDCAMP_SEARCH = u'http://bandcamp.com/search?q={query}&page={page}'
-BANDCAMP_ALBUM = u'album'
-BANDCAMP_ARTIST = u'band'
-BANDCAMP_TRACK = u'track'
+USER_AGENT = 'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
+BANDCAMP_SEARCH = 'http://bandcamp.com/search?q={query}&page={page}'
+BANDCAMP_ALBUM = 'album'
+BANDCAMP_ARTIST = 'band'
+BANDCAMP_TRACK = 'track'
+ARTIST_TITLE_DELIMITER = ' - '
 
 
 class BandcampPlugin(plugins.BeetsPlugin):
@@ -45,7 +47,8 @@ class BandcampPlugin(plugins.BeetsPlugin):
             'source_weight': 0.5,
             'min_candidates': 5,
             'lyrics': False,
-            'art': False
+            'art': False,
+            'split_artist_title': False
         })
         self.import_stages = [self.imported]
         self.register_listener('pluginload', self.loaded)
@@ -58,8 +61,8 @@ class BandcampPlugin(plugins.BeetsPlugin):
             for plugin in plugins.find_plugins():
                 if isinstance(plugin, fetchart.FetchArtPlugin):
                     plugin.sources = [BandcampAlbumArt(plugin._log, self.config)] + plugin.sources
-                    fetchart.ART_SOURCES[u'bandcamp'] = BandcampAlbumArt
-                    fetchart.SOURCE_NAMES[BandcampAlbumArt] = u'bandcamp'
+                    fetchart.ART_SOURCES['bandcamp'] = BandcampAlbumArt
+                    fetchart.SOURCE_NAMES[BandcampAlbumArt] = 'bandcamp'
                     break
 
     def album_distance(self, items, album_info, mapping):
@@ -110,7 +113,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         if self.config['lyrics']:
             for item in task.imported_items():
                 # Only fetch lyrics for items from bandcamp
-                if hasattr(item, 'data_source') and item.data_source == u'bandcamp':
+                if hasattr(item, 'data_source') and item.data_source == 'bandcamp':
                     self.add_lyrics(item, True)
 
     def get_albums(self, query):
@@ -171,6 +174,10 @@ class BandcampPlugin(plugins.BeetsPlugin):
             title = name_section.find(attrs={'itemprop': 'name'}).text.strip()
             artist_url = url.split('/track/')[0]
             artist = name_section.find(attrs={'itemprop': 'byArtist'}).text.strip()
+            if self.config['split_artist_title']:
+                artist_from_title, title = self._split_artist_title(title)
+                if artist_from_title is not None:
+                    artist = artist_from_title
 
             try:
                 duration = html.find('meta', attrs={'itemprop': 'duration'})['content']
@@ -192,15 +199,15 @@ class BandcampPlugin(plugins.BeetsPlugin):
         lyrics will also be written to the file itself."""
         # Skip if the item already has lyrics.
         if item.lyrics:
-            self._log.info(u'lyrics already present: {0}', item)
+            self._log.info('lyrics already present: {0}', item)
             return
 
         lyrics = self.get_item_lyrics(item)
 
         if lyrics:
-            self._log.info(u'fetched lyrics: {0}', item)
+            self._log.info('fetched lyrics: {0}', item)
         else:
-            self._log.info(u'lyrics not found: {0}', item)
+            self._log.info('lyrics not found: {0}', item)
             return
 
         item.lyrics = lyrics
@@ -238,7 +245,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
             while len(urls) < self.config['min_candidates'].as_number():
                 self._log.debug('Searching {}, page {}'.format(search_type, page))
                 results = self._get(BANDCAMP_SEARCH.format(query=query, page=page))
-                clazz = u'searchresult {0}'.format(search_type)
+                clazz = 'searchresult {0}'.format(search_type)
                 for result in results.find_all('li', attrs={'class': clazz}):
                     a = result.find(attrs={'class': 'heading'}).a
                     if a is not None:
@@ -272,6 +279,9 @@ class BandcampPlugin(plugins.BeetsPlugin):
 
         title_html = track_html.find(attrs={'class': 'title-col'})
         title = title_html.find(attrs={'itemprop': 'name'}).text.strip()
+        artist = None
+        if self.config['split_artist_title']:
+            artist, title = self._split_artist_title(title)
         track_url = title_html.find(attrs={'itemprop': 'url'})
         if track_url is None:
             raise BandcampException('No track url (id) for track {0} - {1}'.format(track_num, title))
@@ -283,7 +293,15 @@ class BandcampPlugin(plugins.BeetsPlugin):
         except TypeError:
             track_length = None
 
-        return TrackInfo(title, track_id, index=track_num, length=track_length)
+        return TrackInfo(title, track_id, index=track_num, length=track_length, artist=artist)
+
+    def _split_artist_title(self, title):
+        """Returns artist and title by splitting title on ARTIST_TITLE_DELIMITER.
+        """
+        parts = title.split(ARTIST_TITLE_DELIMITER)
+        if len(parts) == 1:
+            return None, title
+        return parts[0], ARTIST_TITLE_DELIMITER.join(parts[1:])
 
 
 class BandcampAlbumArt(fetchart.RemoteArtSource):
@@ -293,7 +311,7 @@ class BandcampAlbumArt(fetchart.RemoteArtSource):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if isinstance(album.mb_albumid, basestring) and u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, six.string_types) and 'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)

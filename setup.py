@@ -2,13 +2,13 @@ from setuptools import setup
 
 setup(
     name='beets-bandcamp',
-    version='0.1.2',
+    version='0.1.3',
     description='Plugin for beets (http://beets.io) to use bandcamp as an autotagger source.',
     long_description=open('README.rst').read(),
     author='Ariel George',
     author_email='unarbolito@gmail.com',
     url='https://github.com/unrblt/beets-bandcamp',
-    download_url='https://github.com/unrblt/beets-bandcamp/archive/v0.1.2.tar.gz',
+    download_url='https://github.com/unrblt/beets-bandcamp/archive/v0.1.3.tar.gz',
     license='GPL-2.0',
     platforms='ALL',
 
@@ -16,6 +16,7 @@ setup(
 
     install_requires=[
         'beets>=1.4.6',
+        'six>=1.9'
         'requests',
         'beautifulsoup4',
         'isodate'
@@ -30,5 +31,6 @@ setup(
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
     ],
 )
