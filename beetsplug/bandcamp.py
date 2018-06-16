@@ -31,12 +31,12 @@ import isodate
 import six
 
 
-USER_AGENT = u'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
-BANDCAMP_SEARCH = u'http://bandcamp.com/search?q={query}&page={page}'
-BANDCAMP_ALBUM = u'album'
-BANDCAMP_ARTIST = u'band'
-BANDCAMP_TRACK = u'track'
-ARTIST_TITLE_DELIMITER = u' - '
+USER_AGENT = 'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
+BANDCAMP_SEARCH = 'http://bandcamp.com/search?q={query}&page={page}'
+BANDCAMP_ALBUM = 'album'
+BANDCAMP_ARTIST = 'band'
+BANDCAMP_TRACK = 'track'
+ARTIST_TITLE_DELIMITER = ' - '
 
 
 class BandcampPlugin(plugins.BeetsPlugin):
@@ -61,8 +61,8 @@ class BandcampPlugin(plugins.BeetsPlugin):
             for plugin in plugins.find_plugins():
                 if isinstance(plugin, fetchart.FetchArtPlugin):
                     plugin.sources = [BandcampAlbumArt(plugin._log, self.config)] + plugin.sources
-                    fetchart.ART_SOURCES[u'bandcamp'] = BandcampAlbumArt
-                    fetchart.SOURCE_NAMES[BandcampAlbumArt] = u'bandcamp'
+                    fetchart.ART_SOURCES['bandcamp'] = BandcampAlbumArt
+                    fetchart.SOURCE_NAMES[BandcampAlbumArt] = 'bandcamp'
                     break
 
     def album_distance(self, items, album_info, mapping):
@@ -113,7 +113,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
         if self.config['lyrics']:
             for item in task.imported_items():
                 # Only fetch lyrics for items from bandcamp
-                if hasattr(item, 'data_source') and item.data_source == u'bandcamp':
+                if hasattr(item, 'data_source') and item.data_source == 'bandcamp':
                     self.add_lyrics(item, True)
 
     def get_albums(self, query):
@@ -199,15 +199,15 @@ class BandcampPlugin(plugins.BeetsPlugin):
         lyrics will also be written to the file itself."""
         # Skip if the item already has lyrics.
         if item.lyrics:
-            self._log.info(u'lyrics already present: {0}', item)
+            self._log.info('lyrics already present: {0}', item)
             return
 
         lyrics = self.get_item_lyrics(item)
 
         if lyrics:
-            self._log.info(u'fetched lyrics: {0}', item)
+            self._log.info('fetched lyrics: {0}', item)
         else:
-            self._log.info(u'lyrics not found: {0}', item)
+            self._log.info('lyrics not found: {0}', item)
             return
 
         item.lyrics = lyrics
@@ -245,7 +245,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
             while len(urls) < self.config['min_candidates'].as_number():
                 self._log.debug('Searching {}, page {}'.format(search_type, page))
                 results = self._get(BANDCAMP_SEARCH.format(query=query, page=page))
-                clazz = u'searchresult {0}'.format(search_type)
+                clazz = 'searchresult {0}'.format(search_type)
                 for result in results.find_all('li', attrs={'class': clazz}):
                     a = result.find(attrs={'class': 'heading'}).a
                     if a is not None:
@@ -311,7 +311,7 @@ class BandcampAlbumArt(fetchart.RemoteArtSource):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if isinstance(album.mb_albumid, six.string_types) and u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, six.string_types) and 'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
