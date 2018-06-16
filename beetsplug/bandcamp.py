@@ -28,6 +28,7 @@ import beets
 import requests
 from bs4 import BeautifulSoup
 import isodate
+import six
 
 
 USER_AGENT = u'beets/{0} +http://beets.radbox.org/'.format(beets.__version__)
@@ -310,7 +311,7 @@ class BandcampAlbumArt(fetchart.RemoteArtSource):
         """Return the url for the cover from the bandcamp album page.
         This only returns cover art urls for bandcamp albums (by id).
         """
-        if isinstance(album.mb_albumid, basestring) and u'bandcamp' in album.mb_albumid:
+        if isinstance(album.mb_albumid, six.string_types) and u'bandcamp' in album.mb_albumid:
             try:
                 headers = {'User-Agent': USER_AGENT}
                 r = requests.get(album.mb_albumid, headers=headers)
