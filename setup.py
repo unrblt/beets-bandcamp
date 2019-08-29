@@ -21,6 +21,9 @@ setup(
         'beautifulsoup4',
         'isodate'
     ],
+    extras_require={
+        'with_description': ['html2text'],
+    },
 
     classifiers=[
         'Topic :: Multimedia :: Sound/Audio',

@@ -52,6 +52,8 @@ class BandcampPlugin(plugins.BeetsPlugin):
         })
         self.import_stages = [self.imported]
         self.register_listener('pluginload', self.loaded)
+        if self.config['description']:
+            self.descriptions = {}
 
     def loaded(self):
         # Add our own artsource to the fetchart plugin.
@@ -116,6 +118,13 @@ class BandcampPlugin(plugins.BeetsPlugin):
                 if hasattr(item, 'data_source') and item.data_source == 'bandcamp':
                     self.add_lyrics(item, True)
 
+        if self.config['description'] and task.is_album:
+            album = task.album
+            field = self.config['description'].as_str()
+            if album.mb_albumid in self.descriptions:
+                album[field] = self.descriptions[album.mb_albumid]
+                album.store()
+
     def get_albums(self, query):
         """Returns a list of AlbumInfo objects for a bandcamp search query.
         """
@@ -141,6 +150,20 @@ class BandcampPlugin(plugins.BeetsPlugin):
             release = html.find('meta', attrs={'itemprop': 'datePublished'})['content']
             release = isodate.parse_date(release)
             artist_url = url.split('/album/')[0]
+
+            if self.config['description']:
+                try:
+                    import html2text
+                except ImportError:
+                    self._log.warning('Failed to import html2text')
+                    pass
+                else:
+                    description = html.find('div', attrs={'itemprop': 'description'})
+                    if description:
+                        totext = html2text.HTML2Text()
+                        description = totext.handle(str(description).strip())
+                        self.descriptions[album_id] = description
+
             tracks = []
             for row in html.find(id='track_table').find_all(attrs={'itemprop': 'tracks'}):
                 track = self._parse_album_track(row)

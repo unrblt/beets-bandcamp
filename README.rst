@@ -29,6 +29,10 @@ Configuration
   FetchArt plugin).  Default is ``false``.
 
 *
+  **description** If this is set to a string, the plugin will add the album
+  description to the beets album in a flexible field of the specified name.
+
+*
   **split_artist_title** If this is ``true`` the plugin will try to split the
   title on `` - `` using the first part as artist and the rest as title.
   This can be useful for compilation albums, although you may still need to use
