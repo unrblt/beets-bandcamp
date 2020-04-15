@@ -73,7 +73,7 @@ class BandcampPlugin(plugins.BeetsPlugin):
             dist.add('source', self.config['source_weight'].as_number())
         return dist
 
-    def candidates(self, items, artist, album, va_likely):
+    def candidates(self, items, artist, album, va_likely, extra_tags=None):
         """Returns a list of AlbumInfo objects for bandcamp search results
         matching an album and artist (if not various).
         """
