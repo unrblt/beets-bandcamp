@@ -16,7 +16,7 @@ setup(
 
     install_requires=[
         'beets>=1.4.6',
-        'six>=1.9'
+        'six>=1.9',
         'requests',
         'beautifulsoup4',
         'isodate'
